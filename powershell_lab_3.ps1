@@ -1,16 +1,16 @@
-﻿clear
+﻿Clear-Host
 
-$users = Get-ADUser -Filter * -Properties Department | SELECT SamAccountName, Department | Where-Object Department -EQ $null
+$users = Get-ADUser -Filter * -Properties Department | Select-Object `
+SamAccountName, Department | Where-Object Department -EQ $null
 
-if($users.SamAccountName.count -eq 0) {
-    write-host "All Users SET"
-} else {
-    foreach($item in $users) {
-        if($item.Department -eq $null){
-            Write-Host $item.SamAccountName -ForegroundColor Yellow
+if($users.SamAccountName.count -ne 0) {
+        foreach($item in $users) {
+            #Write-Host $item.SamAccountName $item.Department -ForegroundColor Yellow
             Set-ADUser -Identity $item.SamAccountName -Department "Marketing"
-        } else {
-            Write-Host $item.SamAccountName -ForegroundColor Green
+            Get-ADUser -Identity $item.SamAccountName -Properties Department | Select-Object name, Department
         }
+    } else {
+        write-host "All Users SET"
     }
-}
+    
+
