@@ -1,31 +1,44 @@
-﻿$hostname = $env:COMPUTERNAME
-$user = $env:USERNAME.Split(".")
-$fName = ( Get-Culture ).TextInfo.ToTitleCase( $user[0].ToLower() )
-$lName = ( Get-Culture ).TextInfo.ToTitleCase( $user[1].ToLower() )
-
-Function Set-ConsoleColor ($bc, $fc) {
-    $Host.UI.RawUI.BackgroundColor = $bc
-    $Host.UI.RawUI.ForegroundColor = $fc
-    Clear-Host
-}
-
-
-Set-ConsoleColor 'DarkCyan' 'Yellow'
-
-$bgcolor = Read-Host "What color would you like your background?"
-$textcolor = Read-Host "What color would you like your text?"
-
-Set-ConsoleColor $bgcolor $textcolor
-
 Clear-Host
 
-Write-Host "Hello $hostname`nBut that's not your real name is it $fName $($lName)?`n"
-$nameChoice = Read-Host "May I call you $($fName)?"
+$Array = @()
+$baseURL = 'http://whois.arin.net/rest'
+$header = @{"Accept" = "application/xml"}
 
-if ($nameChoice.Substring(0,1).ToLower().Equals("y")) {
-    Write-Host "Great, Hello $fName"
+$ipList = get-nettcpconnection | Where-Object {($_.AppliedSetting -eq "Internet") -and ($_.RemotePort -ne "80")}|`
+            Select-Object @{name="Index";Expression={($global:index+=1)}},LocalAddress,LocalPort,RemoteAddress,RemotePort,State,`
+            @{Name="Process";Expression={(Get-Process -Id $_.OwningProcess).ProcessName}}
+
+foreach($item in $ipList) {
+
+    $Array += $item
 }
-else {
-    $fName = Read-Host "Oh? What may I call you then? "
-    Write-Host "Okay, you want to be called $fName"
+
+$Array | Format-Table
+
+$ip = Read-Host "Whois on which index? (currently IPv4 only)"
+
+foreach($element in $Array) {
+    if ($ip -eq $element.Index){
+        $ipaddress = $element.RemoteAddress
+    }
 }
+#following code originally by PSScriptTools 2.9.0
+#https://www.powershellgallery.com/packages/PSScriptTools/2.9.0/Content/functions%5CGet-WhoIs.ps1
+#modified for my use
+Write-Verbose "Getting WhoIs information for $IPAddress"
+$url = "$baseUrl/ip/$ipaddress"
+$r = Invoke-Restmethod $url -Headers $header -ErrorAction stop
+
+if ($r.net) {
+            Write-Verbose "Creating result"
+            [pscustomobject]@{
+                IP                     = $ipaddress
+                Name                   = $r.net.name
+                RegisteredOrganization = $r.net.orgRef.name
+                City                   = (Invoke-RestMethod $r.net.orgRef.'#text').org.city
+                StartAddress           = $r.net.startAddress
+                EndAddress             = $r.net.endAddress
+                NetBlocks              = $r.net.netBlocks.netBlock | foreach-object {"$($_.startaddress)/$($_.cidrLength)"}
+                Updated                = $r.net.updateDate -as [datetime]
+            }
+        }
