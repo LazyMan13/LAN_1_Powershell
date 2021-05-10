@@ -1,9 +1,6 @@
 Clear-Host
 
 $Array = @()
-$baseURL = 'http://whois.arin.net/rest'
-$header = @{"Accept" = "application/xml"}
-
 $ipList = get-nettcpconnection | Where-Object {($_.AppliedSetting -eq "Internet") -and ($_.RemotePort -ne "80")}|`
             Select-Object @{name="Index";Expression={($global:index+=1)}},LocalAddress,LocalPort,RemoteAddress,RemotePort,State,`
             @{Name="Process";Expression={(Get-Process -Id $_.OwningProcess).ProcessName}}
@@ -25,12 +22,12 @@ foreach($element in $Array) {
 #following code originally by PSScriptTools 2.9.0
 #https://www.powershellgallery.com/packages/PSScriptTools/2.9.0/Content/functions%5CGet-WhoIs.ps1
 #modified for my use
-Write-Verbose "Getting WhoIs information for $IPAddress"
+$baseURL = 'http://whois.arin.net/rest'
+$header = @{"Accept" = "application/xml"}
 $url = "$baseUrl/ip/$ipaddress"
 $r = Invoke-Restmethod $url -Headers $header -ErrorAction stop
 
 if ($r.net) {
-            Write-Verbose "Creating result"
             [pscustomobject]@{
                 IP                     = $ipaddress
                 Name                   = $r.net.name
